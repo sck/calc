@@ -31,9 +31,19 @@ end
 def human_readable_size_i(s)
   h = ["", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
   i = 0
-  while s >= 1000 && i < h.size
+  while s >= 1024 && i < h.size
     i += 1
     s /= 1024.0
+  end
+  sprintf "%d#{h[i]}", s
+end
+
+def human_readable_size_b(s)
+  h = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"]
+  i = 0
+  while s >= 1000 && i < h.size
+    i += 1
+    s /= 1000.0
   end
   sprintf "%d#{h[i]}", s
 end
@@ -41,6 +51,10 @@ end
 def output(v)
   if $seconds
     puts human_readable_time(v)
+    return
+  end
+  if $kind == -1
+    puts human_readable_size_b(v)
     return
   end
   v = ($kind == 0) ? v.inspect : ($kind == 1 ? human_readable_size(v) : 
@@ -81,18 +95,61 @@ def process(l)
     [{:s=>"KB", :l =>"kilobyte", :v => 1e3},
     {:s=>"KiB", :l => "kibibyte", :v => 1024}]
   ]
-  units.each {|kinds|
-    reversed = $kind == 0 || $kind == 1 ? 0  : 1
-    k = reversed > 0 ? 2 : 1
-    (reversed > 0 ? kinds.reverse: kinds).each {|u|
-      re = /(?<=\D|^)(\d+)(#{u[:l]}|#{u[:s]}|#{u[:s][0]})(s|\/s|)(?=\W|$)/i
-      l.gsub!(re) {|m|
-        number = $1
-        $seconds = $3 != ""
-        $kind = k
-        u[:v] * number.to_f
-      }
+  units_bit = [
+    [{:s=>"Ybit", :l=>"yottabit", :v=>1e24},
+    {:s=>"Yibit", :l=>"yobibit", :v=>(1024**8)/8}],
+
+    [{:s=>"Zbit", :l=>"zettabit", :v=>1e20},
+    {:s=>"Zibit", :l=>"zebibit", :v=>(1024**7)/8}],
+
+    [{:s=>"Ebit", :l=>"exabit", :v=>1e17},
+    {:s=>"Eibit", :l=>"exbibit", :v=>(1024**6)/8}],
+
+    [{:s=>"Pbit", :l=>"petabit", :v=>1e14},
+    {:s=>"Pibit", :l=>"pebibit", :v=>(1024**5)/8}],
+
+    [{:s=>"Tbit", :l=>"terabit", :v=>1e11},
+    {:s=>"Tibit", :l=>"tebibit", :v=>(1024**4)/8}],
+
+    [{:s=>"Gbit", :l=>"gigabit", :v=> 1e8},
+    {:s=>"Gibit", :l=>"gibibit", :v=>(1024**3)/8}],
+
+    [{:s=>"Mbit", :l=>"megabit", :v=>1e5},
+    {:s=>"Mibit", :l=>"mebibit", :v=>(1024**2)/8}],
+
+    [{:s=>"kbit", :l =>"kilobit", :v => 1e2},
+    {:s=>"Kibit", :l => "kibibit", :v => 1024/8}]
+  ]
+  [units].each {|uu|
+    uu.each {|kinds|
+      reversed = $kind < 2 ? 0  : 1
       k = reversed > 0 ? 2 : 1
+      (reversed > 1 ? kinds.reverse: kinds).each {|u|
+        re = /(?<=\D|^)(\d+)(#{u[:l]}|#{u[:s]}|#{u[:s][0]})(s|\/s|)(?=\W|$)/i
+        l.gsub!(re) {|m|
+          number = $1
+          $seconds = $3 != ""
+          $kind = $2.length == 1 ? -1 : k
+          u[:v] * number.to_f
+        }
+        k = reversed > 0 ? 2 : 1
+      }
+    }
+  }
+  [units_bit].each {|uu|
+    uu.each {|kinds|
+      reversed = $kind < 2 ? 0  : 1
+      k = reversed > 0 ? 2 : 1
+      (reversed > 1 ? kinds.reverse: kinds).each {|u|
+        re = /(?<=\D|^)(\d+)(#{u[:l]}|#{u[:s]})(s|\/s|)(?=\W|$)/i
+        l.gsub!(re) {|m|
+          number = $1
+          $seconds = $3 != ""
+          $kind = $2.length == 1 ? -1 : k
+          u[:v] * number.to_f
+        }
+        k = reversed > 0 ? 2 : 1
+      }
     }
   }
   op_res = ["*", "+", "%", "/", "^"]

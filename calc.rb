@@ -157,7 +157,8 @@ def process(l)
   r = l.gsub(/(?<=^|#{op_re}|\s)([a-zA-Z]+)/) {|v|
     "$v[#{v.inspect}]"
   }
-  r
+  r2 = r.gsub(/(\d)[\sa-zA-Z$]+(?!\+)/, '\1').gsub(/[\sa-zA-Z$]+(\d)/, '\1')
+  r2
 end
 
 def interpret(line)
